@@ -115,7 +115,7 @@ module.exports = {
     require('../users/userController.js').findByPhone(req.body.phone, function(user) {
       req.user = user;
       req.group.createPing({UserId: req.user.id});
-      console.log('pinged')
+      console.log('pinged');
       req.group.getUsers()
       .then(function (users) {
         users.forEach(function (user) {
@@ -125,6 +125,34 @@ module.exports = {
         });
         res.end('Pinged ' + users.length + ' members of ' + req.group.name);
       });
+    });
+  },
+
+  joinPing: function(req, res) {
+    if (req.user) {
+      req.body.username = req.user.username;  // lame hack to not fail on username lookup if already done (i.e. Twilio)
+    }
+    req.group.createPing({UserId: req.user.id});
+    req.group.getUsers()
+    .then(function (users) {
+      users.forEach(function(user) {
+        clients.sendSMS(req.body.username + " has just joined " + req.group.name + "!", user.phone);
+      });
+      res.end('New user joined group!');
+    });
+  },
+
+  invite: function(req, res){
+    require('../users/userController.js').findByPhone(req.body.inviteeNumber, function(user) {
+      req.group.createPing({UserId: req.user.id});
+      var groupCredentials;
+      if (req.body.key) {
+        groupCredentials = req.group.name + ' ' + req.body.key;
+      } else {
+        groupCredentials = req.group.name;
+      }
+      clients.sendSMS(req.body.username + ' invited you to join ' + req.group.name + '! Reply with "join ' + groupCredentials + '" to join group.', req.body.inviteeNumber);
+      res.end('Invite sent!');
     });
   }
 };
